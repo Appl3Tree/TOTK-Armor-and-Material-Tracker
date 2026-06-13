@@ -591,12 +591,13 @@ function sortClick(th) {
 
 // ---- Armor tab ----
 
-// Set the "owned" flag for an armor piece, preserving its star level (if any).
+// Set the "owned" flag for an armor piece.
+// If a piece is marked unowned, reset its upgrade level to 0 because upgraded armor must be owned.
 function setOwned(armorEntry, owned) {
   const key = armorEntry.set + "|" + armorEntry.name;
   const prev = armorState[key] || {};
   if (armorEntry.upgradeable) {
-    armorState[key] = { level: prev.level || 0, owned };
+    armorState[key] = { level: owned ? (prev.level || 0) : 0, owned };
   } else {
     armorState[key] = { owned };
   }
@@ -688,8 +689,10 @@ function renderArmor() {
         checkbox.id = "armor-" + key.replace(/[^a-zA-Z0-9]/g, "_");
         checkbox.addEventListener("change", () => {
           const prev = armorState[key] || { level: 0 };
-          armorState[key] = { level: prev.level || 0, owned: checkbox.checked };
+          const ownedNow = checkbox.checked;
+          armorState[key] = { level: ownedNow ? (prev.level || 0) : 0, owned: ownedNow };
           saveJSON(ARMOR_KEY, armorState);
+          renderArmor();
           renderMaterials();
         });
         toggleLabel.setAttribute("for", checkbox.id);
@@ -775,7 +778,7 @@ document.getElementById("markAllOwned").addEventListener("click", () => {
 });
 
 document.getElementById("markNoneOwned").addEventListener("click", () => {
-  if (confirm("Mark all 135 armor pieces as not owned? Star levels are kept as-is.")) {
+  if (confirm("Mark all 135 armor pieces as not owned? Upgrade levels will be reset to 0.")) {
     ARMOR.forEach(a => setOwned(a, false));
     saveJSON(ARMOR_KEY, armorState);
     renderArmor();
