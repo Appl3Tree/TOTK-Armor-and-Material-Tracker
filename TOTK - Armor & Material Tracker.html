@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTK Armor &amp; Material Tracker</title>
+<style>
+  :root {
+    --bg: #1a1d23;
+    --panel: #242830;
+    --row-alt: #2a2f38;
+    --border: #3a3f4a;
+    --text: #e8e6e1;
+    --text-dim: #9aa0ab;
+    --accent: #5fb78c;
+    --warn: #d98c4a;
+    --short: #d9534f;
+    --input-bg: #1e2228;
+    --star-on: #f0c95e;
+    --star-off: #444a55;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 12px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    min-height: 44px;
+  }
+  .tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    align-items: stretch;
+  }
+  input[type="text"] {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 1rem;
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+  button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    min-height: 44px;
+    flex: 1 1 auto;
+  }
+  button:hover, button:focus-visible { border-color: var(--accent); }
+  button:focus-visible, input:focus-visible, th:focus-visible, .star-btn:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    min-height: 44px;
+  }
+  .toggle-row label {
+    flex: 1;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .toggle-row input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  .summary {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .summary strong { color: var(--text); }
+
+  /* Materials table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: var(--panel);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 8px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--row-alt);
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--accent); }
+  tr:nth-child(even) td { background: var(--row-alt); }
+  tr.hidden { display: none; }
+  td.num, th.num { text-align: right; }
+  input[type="number"] {
+    width: 64px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 6px;
+    border-radius: 6px;
+    text-align: right;
+    font-size: 0.95rem;
+    min-height: 38px;
+  }
+  input[type="number"]:disabled {
+    opacity: 0.65;
+  }
+  .safe { color: var(--accent); font-weight: 600; }
+  .short { color: var(--short); font-weight: 600; }
+  .zero { color: var(--text-dim); }
+  .need-value {
+    display: inline-block;
+    min-width: 5.5em;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .id-col { color: var(--text-dim); width: 32px; }
+
+  /* Armor tab */
+  .armor-set-group {
+    margin-bottom: 14px;
+  }
+  .armor-set-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 6px 2px;
+  }
+  .armor-set-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    flex: 1;
+  }
+  .set-bulk-btn {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    min-height: 28px;
+    flex: 0 0 auto;
+  }
+  .set-bulk-btn:hover, .set-bulk-btn:focus-visible {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .armor-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .armor-name {
+    flex: 1 1 140px;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .armor-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stars {
+    display: flex;
+    gap: 4px;
+  }
+  .star-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--star-off);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .star-btn.lit { color: var(--star-on); border-color: var(--star-on); }
+  .owned-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .owned-toggle input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+  .maxed-badge {
+    font-size: 0.72rem;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  .nocost-badge {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+
+  .backup-note {
+    font-size: 0.78rem;
+    color: var(--warn);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+  }
+  #fileInput { display: none; }
+
+  @media (max-width: 600px) {
+    th, td { padding: 6px 4px; font-size: 0.78rem; }
+    input[type="number"] { width: 52px; }
+    .star-btn { width: 34px; height: 34px; font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Tears of the Kingdom — Armor &amp; Material Tracker</h1>
+<div class="subtitle">
+  Track armor upgrade levels and the materials needed to finish them. Data is saved automatically in this browser.
+</div>
+
+<div class="backup-note">
+  ⚠ Mobile browsers can clear saved data without warning. Use Export regularly to back up your progress to a file, and Import to restore it.
+</div>
+
+<div class="backup-note">
+  ⚠ Rupee Need totals include level-0 purchase/unlock costs from the CSV plus Great Fairy labor fees only for armor marked upgradeable in the Armor Checklist CSV. Non-upgradeable armor pieces do not receive Fairy labor costs.
+</div>
+
+<div class="controls">
+  <button id="exportBtn">Export backup (JSON)</button>
+  <button id="importBtn">Import backup</button>
+  <input type="file" id="fileInput" accept="application/json">
+</div>
+
+<div class="tabs" role="tablist">
+  <button class="tab-btn active" data-tab="materials" role="tab" aria-selected="true">Materials</button>
+  <button class="tab-btn" data-tab="armor" role="tab" aria-selected="false">Armor</button>
+</div>
+
+<!-- MATERIALS TAB -->
+<div class="tab-panel active" id="tab-materials">
+
+  <div class="toggle-row">
+    <label for="filterOwned">Only show materials needed for armor I own</label>
+    <input type="checkbox" id="filterOwned">
+  </div>
+
+  <div class="controls">
+    <input type="text" id="searchBox" placeholder="Search item name...">
+  </div>
+
+  <div class="controls">
+    <button id="resetHaves">Reset Have values to 0</button>
+  </div>
+
+  <div class="summary" id="summaryLive" aria-live="polite">
+    <span>Items shown: <strong id="totalItems"></strong></span>
+    <span>Items with Need &gt; 0: <strong id="itemsWithNeed">0</strong></span>
+    <span>Items short: <strong id="itemsShort">0</strong></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col" data-sort="id" tabindex="0">#</th>
+        <th data-sort="name" tabindex="0">Item</th>
+        <th class="num" data-sort="have" tabindex="0">Have</th>
+        <th class="num" data-sort="need" tabindex="0">Need</th>
+        <th class="num" data-sort="safe" tabindex="0">Safe</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- ARMOR TAB -->
+<div class="tab-panel" id="tab-armor">
+  <div class="subtitle">
+    Tap stars to set each piece's current upgrade level (0 = no stars, 4 = fully upgraded). Check "Owned" on pieces you have — owned pieces count their remaining upgrade levels toward Materials totals; unowned pieces count their full cost. For the 3 Dark armor pieces, "Owned" means already unlocked (excluded from totals).
+  </div>
+  <div class="controls">
+    <input type="text" id="armorSearchBox" placeholder="Search armor name...">
+  </div>
+  <div class="controls">
+    <button id="markAllOwned">Mark all as owned</button>
+    <button id="markNoneOwned">Mark all as not owned</button>
+  </div>
+  <div id="armorList"></div>
+</div>
+
+<script>
+const MATERIALS = [[1,"Poe"],[2,"Rupee"],[3,"Smotherwing Butterfly"],[4,"Summerwing Butterfly"],[5,"Thunderwing Butterfly"],[6,"Winterwing Butterfly"],[7,"Cold Darner"],[8,"Electric Darner"],[9,"Warm Darner"],[10,"Hot-Footed Frog"],[11,"Sticky Frog"],[12,"Bladed Rhino Beetle"],[13,"Deep Firefly"],[14,"Energetic Rhino Beetle"],[15,"Sunset Firefly"],[16,"Fireproof Lizard"],[17,"Hearty Lizard"],[18,"Hightail Lizard"],[19,"Sticky Lizard"],[20,"Puffshroom"],[21,"Razorclaw Crab"],[22,"Sneaky River Snail"],[23,"Chillfin Trout"],[24,"Glowing Cave Fish"],[25,"Hearty Bass"],[26,"Hyrule Bass"],[27,"Sizzlefin Trout"],[28,"Stealthfin Trout"],[29,"Voltfin Trout"],[30,"Dazzlefruit"],[31,"Fire Fruit"],[32,"Ice Fruit"],[33,"Mighty Banana"],[34,"Shock Fruit"],[35,"Voltfruit"],[36,"Courser Bee Honey"],[37,"Dark Clump"],[38,"Brightcap"],[39,"Chillshroom"],[40,"Rushroom"],[41,"Silent Shroom"],[42,"Sunshroom"],[43,"Zapshroom"],[44,"Razorshroom"],[45,"Acorn"],[46,"Blue Nightshade"],[47,"Cool Safflina"],[48,"Electric Safflina"],[49,"Mighty Thistle"],[50,"Silent Princess"],[51,"Sundelion"],[52,"Swift Carrot"],[53,"Swift Violet"],[54,"Warm Safflina"],[55,"Amber"],[56,"Diamond"],[57,"Opal"],[58,"Ruby"],[59,"Sapphire"],[60,"Topaz"],[61,"Flint"],[62,"Luminous Stone"],[63,"Brightbloom Seed"],[64,"Giant Brightbloom Seed"],[65,"Large Zonai Charge"],[66,"Large Zonaite"],[67,"Star Fragment"],[68,"Zonaite"],[69,"Dinraal's Claw"],[70,"Dinraal's Horn"],[71,"Dinraal's Scale"],[72,"Farosh's Claw"],[73,"Farosh's Horn"],[74,"Farosh's Scale"],[75,"Light Dragon's Fang"],[76,"Light Dragon's Horn"],[77,"Light Dragon's Scale"],[78,"Light Dragon's Talon"],[79,"Naydra's Claw"],[80,"Naydra's Horn"],[81,"Naydra's Scale"],[82,"Shard of Dinraal's Fang"],[83,"Shard of Dinraal's Spike"],[84,"Shard of Farosh's Fang"],[85,"Shard of Farosh's Spike"],[86,"Shard of Naydra's Fang"],[87,"Shard of Naydra's Spike"],[88,"Aerocuda Eyeball"],[89,"Keese Eyeball"],[90,"Octorok Eyeball"],[91,"Blue-White Frox Fang"],[92,"Bokoblin Fang"],[93,"Frox Fang"],[94,"Moblin Fang"],[95,"Molduga Jaw"],[96,"Obsidian Frox Fang"],[97,"Bokoblin Guts"],[98,"Boss Bokoblin Guts"],[99,"Frox Guts"],[100,"Gibdo Guts"],[101,"Gleeok Guts"],[102,"Hinox Guts"],[103,"Horriblin Guts"],[104,"Lynel Guts"],[105,"Moblin Guts"],[106,"Molduga Guts"],[107,"Black Bokoblin Horn"],[108,"Black Boss Bokoblin Horn"],[109,"Black Hinox Horn"],[110,"Black Horriblin Horn"],[111,"Black Lizalfos Horn"],[112,"Black Modlin Horn"],[113,"Blue Bokoblin Horn"],[114,"Blue Boss Bokoblin Horn"],[115,"Blue Horriblin Horn"],[116,"Blue Lizalfos Horn"],[117,"Blue Moblin Horn"],[118,"Blue-Maned Lynel Mace Horn"],[119,"Blue-Maned Lynel Saber Horn"],[120,"Bokoblin Horn"],[121,"Boss Bokoblin Horn"],[122,"Captain Construct I Horn"],[123,"Captain Construct II Horn"],[124,"Captain Construct III Horn"],[125,"Electric Lizalfos Horn"],[126,"Fire-Breath Lizalfos Horn"],[127,"Gleeok Flame Horn"],[128,"Gleeok Frost Horn"],[129,"Gleeok Thunder Horn"],[130,"Horriblin Horn"],[131,"Ice-Breath Lizalfos Horn"],[132,"Lizalfos Horn"],[133,"Lynel Mace Horn"],[134,"Lynel Saber Horn"],[135,"Moblin Horn"],[136,"Silver Bokoblin Horn"],[137,"Silver Boss Bokoblin Horn"],[138,"Silver Lizalfos Horn"],[139,"Silver Lynel Mace Horn"],[140,"Silver Moblin Horn"],[141,"Silver Lynel Saber Horn"],[142,"Soldier Construct Horn"],[143,"Soldier Construct II Horn"],[144,"Soldier Construct III Horn"],[145,"Soldier Construct IV Horn"],[146,"White-Maned Lynel Mace Horn"],[147,"White-Maned Lynel Saber Horn"],[148,"Chuchu Jelly"],[149,"Red Chuchu Jelly"],[150,"White Chuchu Jelly"],[151,"Yelllow Chuchu Jelly"],[152,"Frox Fingernail"],[153,"Gibdo Bone"],[154,"Hinox Toenail"],[155,"Hinox Tooth"],[156,"Lizalfos Talon"],[157,"Lynel Hoof"],[158,"Octo Balloon"],[159,"Octorok Tentacle"],[160,"Fire Like Stone"],[161,"Ice Like Stone"],[162,"Shock Like Stone"],[163,"Blue Lizalfos Tail"],[164,"Electric Lizalfos Tail"],[165,"Fire-Breath Lizalfos Tail"],[166,"Ice-Breath Lizalfos Tail"],[167,"Lizalfos Tail"],[168,"Aerocuda Wing"],[169,"Electric Keese Wing"],[170,"Fire Keese Wing"],[171,"Gibdo Wing"],[172,"Gleeok Wing"],[173,"Ice Keese Wing"],[174,"Keese Wing"],[175,"Molduga Fin"]];
+
+const ARMOR = [{"set":"Awakening","name":"Mask of Awakening","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Star Fragment",1],["Rupee",10]],"2":[["Luminous Stone",15],["Star Fragment",1],["Rupee",50]],"3":[["Luminous Stone",20],["Star Fragment",1],["Rupee",200]],"4":[["Luminous Stone",30],["Star Fragment",1],["Rupee",500]]}},{"set":"Awakening","name":"Trousers of Awakening","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Star Fragment",1],["Rupee",10]],"2":[["Luminous Stone",15],["Star Fragment",1],["Rupee",50]],"3":[["Luminous Stone",20],["Star Fragment",1],["Rupee",200]],"4":[["Luminous Stone",30],["Star Fragment",1],["Rupee",500]]}},{"set":"Awakening","name":"Tunic of Awakening","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Star Fragment",1],["Rupee",10]],"2":[["Luminous Stone",15],["Star Fragment",1],["Rupee",50]],"3":[["Luminous Stone",20],["Star Fragment",1],["Rupee",200]],"4":[["Luminous Stone",30],["Star Fragment",1],["Rupee",500]]}},{"set":"Barbarian","name":"Barbarian Armor","upgradeable":true,"costs":{"1":[["Mighty Thistle",3],["Rupee",10]],"2":[["Lynel Saber Horn",2],["Lynel Mace Horn",2],["Razorshroom",5],["Rupee",50]],"3":[["Blue-Maned Lynel Saber Horn",3],["Blue-Maned Lynel Mace Horn",3],["Razorclaw Crab",3],["Rupee",200]],"4":[["White-Maned Lynel Saber Horn",3],["White-Maned Lynel Mace Horn",3],["Bladed Rhino Beetle",3],["Rupee",500]]}},{"set":"Barbarian","name":"Barbarian Helm","upgradeable":true,"costs":{"1":[["Mighty Thistle",3],["Rupee",10]],"2":[["Lynel Saber Horn",2],["Lynel Mace Horn",2],["Razorshroom",5],["Rupee",50]],"3":[["Blue-Maned Lynel Saber Horn",3],["Blue-Maned Lynel Mace Horn",3],["Razorclaw Crab",3],["Rupee",200]],"4":[["White-Maned Lynel Saber Horn",3],["White-Maned Lynel Mace Horn",3],["Bladed Rhino Beetle",3],["Rupee",500]]}},{"set":"Barbarian","name":"Barbarian Leg Wraps","upgradeable":true,"costs":{"1":[["Mighty Thistle",3],["Rupee",10]],"2":[["Lynel Saber Horn",2],["Lynel Mace Horn",2],["Razorshroom",5],["Rupee",50]],"3":[["Blue-Maned Lynel Saber Horn",3],["Blue-Maned Lynel Mace Horn",3],["Razorclaw Crab",3],["Rupee",200]],"4":[["White-Maned Lynel Saber Horn",3],["White-Maned Lynel Mace Horn",3],["Bladed Rhino Beetle",3],["Rupee",500]]}},{"set":"Charged","name":"Charged Headdress","upgradeable":true,"costs":{"1":[["Shock Fruit",3],["Rupee",10]],"2":[["Electric Lizalfos Horn",5],["Thunderwing Butterfly",3],["Rupee",50]],"3":[["Large Zonai Charge",3],["Shock Like Stone",5],["Electric Darner",5],["Rupee",200]],"4":[["Large Zonai Charge",10],["Voltfin Trout",10],["Gleeok Thunder Horn",5],["Rupee",500]]}},{"set":"Charged","name":"Charged Shirt","upgradeable":true,"costs":{"1":[["Shock Fruit",3],["Rupee",10]],"2":[["Electric Lizalfos Horn",5],["Thunderwing Butterfly",3],["Rupee",50]],"3":[["Large Zonai Charge",3],["Shock Like Stone",5],["Electric Darner",5],["Rupee",200]],"4":[["Large Zonai Charge",10],["Voltfin Trout",10],["Gleeok Thunder Horn",5],["Rupee",500]]}},{"set":"Charged","name":"Charged Trousers","upgradeable":true,"costs":{"1":[["Shock Fruit",3],["Rupee",10]],"2":[["Electric Lizalfos Horn",5],["Thunderwing Butterfly",3],["Rupee",50]],"3":[["Large Zonai Charge",3],["Shock Like Stone",5],["Electric Darner",5],["Rupee",200]],"4":[["Large Zonai Charge",10],["Voltfin Trout",10],["Gleeok Thunder Horn",5],["Rupee",500]]}},{"set":"Climbing","name":"Climber's Bandana","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rushroom",3],["Rupee",10]],"2":[["Electric Keese Wing",5],["Hightail Lizard",5],["Rupee",50]],"3":[["Ice Keese Wing",8],["Hot-Footed Frog",10],["Rupee",200]],"4":[["Fire Keese Wing",10],["Swift Violet",20],["Rupee",500]]}},{"set":"Climbing","name":"Climbing Boots","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rushroom",3],["Rupee",10]],"2":[["Electric Keese Wing",5],["Hightail Lizard",5],["Rupee",50]],"3":[["Ice Keese Wing",8],["Hot-Footed Frog",10],["Rupee",200]],"4":[["Fire Keese Wing",10],["Swift Violet",20],["Rupee",500]]}},{"set":"Climbing","name":"Climbing Gear","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rushroom",3],["Rupee",10]],"2":[["Electric Keese Wing",5],["Hightail Lizard",5],["Rupee",50]],"3":[["Ice Keese Wing",8],["Hot-Footed Frog",10],["Rupee",200]],"4":[["Fire Keese Wing",10],["Swift Violet",20],["Rupee",500]]}},{"set":"Dark","name":"Dark Hood","upgradeable":false,"unlockCost":[["Poe",300]]},{"set":"Dark","name":"Dark Trousers","upgradeable":false,"unlockCost":[["Poe",200]]},{"set":"Dark","name":"Dark Tunic","upgradeable":false,"unlockCost":[["Poe",150]]},{"set":"Depths","name":"Gaiters of the Depths","upgradeable":true,"costs":{"1":[["Deep Firefly",3],["Rupee",10]],"2":[["Frox Fang",3],["Dark Clump",5],["Rupee",50]],"3":[["Obsidian Frox Fang",3],["Zonaite",20],["Frox Fingernail",3],["Rupee",200]],"4":[["Blue-White Frox Fang",5],["Large Zonaite",10],["Frox Guts",3],["Rupee",500]]},"unlockCost":[["Poe",200]]},{"set":"Depths","name":"Hood of the Depths","upgradeable":true,"costs":{"1":[["Deep Firefly",3],["Rupee",10]],"2":[["Frox Fang",3],["Dark Clump",5],["Rupee",50]],"3":[["Obsidian Frox Fang",3],["Zonaite",20],["Frox Fingernail",3],["Rupee",200]],"4":[["Blue-White Frox Fang",5],["Large Zonaite",10],["Frox Guts",3],["Rupee",500]]},"unlockCost":[["Poe",300]]},{"set":"Depths","name":"Tunic of the Depths","upgradeable":true,"costs":{"1":[["Deep Firefly",3],["Rupee",10]],"2":[["Frox Fang",3],["Dark Clump",5],["Rupee",50]],"3":[["Obsidian Frox Fang",3],["Zonaite",20],["Frox Fingernail",3],["Rupee",200]],"4":[["Blue-White Frox Fang",5],["Large Zonaite",10],["Frox Guts",3],["Rupee",500]]},"unlockCost":[["Poe",150]]},{"set":"Desert Voe","name":"Desert Voe Headband","upgradeable":true,"costs":{"1":[["White Chuchu Jelly",3],["Rupee",10]],"2":[["White Chuchu Jelly",5],["Cool Safflina",3],["Rupee",50]],"3":[["Ice Keese Wing",5],["Ice-Breath Lizalfos Tail",3],["Chillshroom",5],["Rupee",200]],"4":[["Ice-Breath Lizalfos Horn",5],["Ice-Breath Lizalfos Tail",10],["Sapphire",5],["Rupee",500]]},"unlockCost":[["Rupee",450]]},{"set":"Desert Voe","name":"Desert Voe Spaulder","upgradeable":true,"costs":{"1":[["White Chuchu Jelly",3],["Rupee",10]],"2":[["White Chuchu Jelly",5],["Cool Safflina",3],["Rupee",50]],"3":[["Ice Keese Wing",5],["Ice-Breath Lizalfos Tail",3],["Chillshroom",5],["Rupee",200]],"4":[["Ice-Breath Lizalfos Horn",5],["Ice-Breath Lizalfos Tail",10],["Sapphire",5],["Rupee",500]]},"unlockCost":[["Rupee",1300]]},{"set":"Desert Voe","name":"Desert Voe Trousers","upgradeable":true,"costs":{"1":[["White Chuchu Jelly",3],["Rupee",10]],"2":[["White Chuchu Jelly",5],["Cool Safflina",3],["Rupee",50]],"3":[["Ice Keese Wing",5],["Ice-Breath Lizalfos Tail",3],["Chillshroom",5],["Rupee",200]],"4":[["Ice-Breath Lizalfos Horn",5],["Ice-Breath Lizalfos Tail",10],["Sapphire",5],["Rupee",500]]},"unlockCost":[["Rupee",650]]},{"set":"Divine","name":"Vah Medoh Divine Helm","upgradeable":true,"costs":{"1":[["Sapphire",1],["Zonaite",5],["Rupee",10]],"2":[["Sapphire",4],["Zonaite",10],["Rupee",50]],"3":[["Sapphire",6],["Large Zonaite",5],["Dazzlefruit",5],["Rupee",200]],"4":[["Sapphire",10],["Large Zonaite",10],["Dazzlefruit",10],["Rupee",500]]}},{"set":"Divine","name":"Vah Naboris Divine Helm","upgradeable":true,"costs":{"1":[["Topaz",1],["Zonaite",5],["Rupee",10]],"2":[["Topaz",4],["Zonaite",10],["Rupee",50]],"3":[["Topaz",6],["Large Zonaite",5],["Dazzlefruit",5],["Rupee",200]],"4":[["Topaz",10],["Large Zonaite",10],["Dazzlefruit",10],["Rupee",500]]}},{"set":"Divine","name":"Vah Rudania Divine Helm","upgradeable":true,"costs":{"1":[["Ruby",1],["Zonaite",5],["Rupee",10]],"2":[["Ruby",4],["Zonaite",10],["Rupee",50]],"3":[["Ruby",6],["Large Zonaite",5],["Dazzlefruit",5],["Rupee",200]],"4":[["Ruby",10],["Large Zonaite",10],["Dazzlefruit",10],["Rupee",500]]}},{"set":"Divine","name":"Vah Ruta Divine Helm","upgradeable":true,"costs":{"1":[["Opal",5],["Zonaite",5],["Rupee",10]],"2":[["Opal",10],["Zonaite",10],["Rupee",50]],"3":[["Opal",15],["Large Zonaite",5],["Dazzlefruit",5],["Rupee",200]],"4":[["Opal",25],["Large Zonaite",10],["Dazzlefruit",10],["Rupee",500]]}},{"set":"Ember","name":"Ember Headdress","upgradeable":true,"costs":{"1":[["Fire Fruit",3],["Rupee",10]],"2":[["Fire-Breath Lizalfos Horn",5],["Summerwing Butterfly",5],["Rupee",50]],"3":[["Fire Like Stone",5],["Warm Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Flame Horn",5],["Sizzlefin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Ember","name":"Ember Shirt","upgradeable":true,"costs":{"1":[["Fire Fruit",3],["Rupee",10]],"2":[["Fire-Breath Lizalfos Horn",5],["Summerwing Butterfly",5],["Rupee",50]],"3":[["Fire Like Stone",5],["Warm Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Flame Horn",5],["Sizzlefin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Ember","name":"Ember Trousers","upgradeable":true,"costs":{"1":[["Fire Fruit",3],["Rupee",10]],"2":[["Fire-Breath Lizalfos Horn",5],["Summerwing Butterfly",5],["Rupee",50]],"3":[["Fire Like Stone",5],["Warm Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Flame Horn",5],["Sizzlefin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Evil Spirit","name":"Evil Spirit Armor","upgradeable":false,"unlockCost":[]},{"set":"Evil Spirit","name":"Evil Spirit Greaves","upgradeable":false,"unlockCost":[]},{"set":"Evil Spirit","name":"Evil Spirit Mask","upgradeable":false,"unlockCost":[]},{"set":"Fierce Deity","name":"Fierce Deity Armor","upgradeable":true,"costs":{"1":[["Hinox Toenail",5],["Naydra's Scale",1],["Rupee",10]],"2":[["Hinox Tooth",5],["Naydra's Claw",1],["Rupee",50]],"3":[["Hinox Guts",2],["Shard of Naydra's Fang",1],["Rupee",200]],"4":[["Lynel Guts",2],["Naydra's Horn",1],["Rupee",500]]}},{"set":"Fierce Deity","name":"Fierce Deity Boots","upgradeable":true,"costs":{"1":[["Hinox Toenail",5],["Farosh's Scale",1],["Rupee",10]],"2":[["Hinox Tooth",5],["Farosh's Claw",1],["Rupee",50]],"3":[["Hinox Guts",2],["Shard of Farosh's Fang",1],["Rupee",200]],"4":[["Lynel Guts",2],["Farosh's Horn",1],["Rupee",500]]}},{"set":"Fierce Deity","name":"Fierce Deity Mask","upgradeable":true,"costs":{"1":[["Hinox Toenail",5],["Dinraal's Scale",1],["Rupee",10]],"2":[["Hinox Tooth",5],["Dinraal's Claw",1],["Rupee",50]],"3":[["Hinox Guts",2],["Shard of Dinraal's Fang",1],["Rupee",200]],"4":[["Lynel Guts",2],["Dinraal's Horn",1],["Rupee",500]]}},{"set":"Flamebreaker","name":"Flamebreaker Armor","upgradeable":true,"costs":{"1":[["Moblin Horn",3],["Rupee",10]],"2":[["Moblin Fang",5],["Fireproof Lizard",5],["Rupee",50]],"3":[["Blue Moblin Horn",5],["Smotherwing Butterfly",3],["Flint",15],["Rupee",200]],"4":[["Black Modlin Horn",5],["Smotherwing Butterfly",5],["Flint",30],["Rupee",500]]},"unlockCost":[["Rupee",700]]},{"set":"Flamebreaker","name":"Flamebreaker Boots","upgradeable":true,"costs":{"1":[["Moblin Horn",3],["Rupee",10]],"2":[["Moblin Fang",5],["Fireproof Lizard",5],["Rupee",50]],"3":[["Blue Moblin Horn",5],["Smotherwing Butterfly",3],["Flint",15],["Rupee",200]],"4":[["Black Modlin Horn",5],["Smotherwing Butterfly",5],["Flint",30],["Rupee",500]]},"unlockCost":[["Rupee",1200]]},{"set":"Flamebreaker","name":"Flamebreaker Helm","upgradeable":true,"costs":{"1":[["Moblin Horn",3],["Rupee",10]],"2":[["Moblin Fang",5],["Fireproof Lizard",5],["Rupee",50]],"3":[["Blue Moblin Horn",5],["Smotherwing Butterfly",3],["Flint",15],["Rupee",200]],"4":[["Black Modlin Horn",5],["Smotherwing Butterfly",5],["Flint",30],["Rupee",500]]},"unlockCost":[["Rupee",1400]]},{"set":"Froggy","name":"Froggy Hood","upgradeable":true,"costs":{"1":[["Sticky Lizard",3],["Rupee",10]],"2":[["Horriblin Horn",5],["Sticky Lizard",5],["Rupee",50]],"3":[["Blue Horriblin Horn",5],["Sticky Frog",5],["Rupee",200]],"4":[["Black Horriblin Horn",5],["Horriblin Guts",10],["Opal",10],["Rupee",500]]}},{"set":"Froggy","name":"Froggy Leggings","upgradeable":true,"costs":{"1":[["Sticky Lizard",3],["Rupee",10]],"2":[["Horriblin Horn",5],["Sticky Lizard",5],["Rupee",50]],"3":[["Blue Horriblin Horn",5],["Sticky Frog",5],["Rupee",200]],"4":[["Black Horriblin Horn",5],["Horriblin Guts",10],["Opal",10],["Rupee",500]]}},{"set":"Froggy","name":"Froggy Sleeve","upgradeable":true,"costs":{"1":[["Sticky Lizard",3],["Rupee",10]],"2":[["Horriblin Horn",5],["Sticky Lizard",5],["Rupee",50]],"3":[["Blue Horriblin Horn",5],["Sticky Frog",5],["Rupee",200]],"4":[["Black Horriblin Horn",5],["Horriblin Guts",10],["Opal",10],["Rupee",500]]}},{"set":"Frostbite","name":"Frostbite Headdress","upgradeable":true,"costs":{"1":[["Ice Fruit",3],["Rupee",10]],"2":[["Ice-Breath Lizalfos Horn",5],["Winterwing Butterfly",5],["Rupee",50]],"3":[["Ice Like Stone",5],["Cold Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Frost Horn",5],["Chillfin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Frostbite","name":"Frostbite Shirt","upgradeable":true,"costs":{"1":[["Ice Fruit",3],["Rupee",10]],"2":[["Ice-Breath Lizalfos Horn",5],["Winterwing Butterfly",5],["Rupee",50]],"3":[["Ice Like Stone",5],["Cold Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Frost Horn",5],["Chillfin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Frostbite","name":"Frostbite Trousers","upgradeable":true,"costs":{"1":[["Ice Fruit",3],["Rupee",10]],"2":[["Ice-Breath Lizalfos Horn",5],["Winterwing Butterfly",5],["Rupee",50]],"3":[["Ice Like Stone",5],["Cold Darner",5],["Large Zonai Charge",5],["Rupee",200]],"4":[["Gleeok Frost Horn",5],["Chillfin Trout",10],["Large Zonai Charge",10],["Rupee",500]]}},{"set":"Glide","name":"Glide Mask","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rupee",10]],"2":[["Aerocuda Wing",5],["Aerocuda Eyeball",6],["Keese Wing",5],["Rupee",50]],"3":[["Aerocuda Wing",6],["Aerocuda Eyeball",8],["Rupee",200]],"4":[["Gleeok Wing",12],["Aerocuda Wing",10],["Gibdo Wing",8],["Rupee",500]]}},{"set":"Glide","name":"Glide Shirt","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rupee",10]],"2":[["Aerocuda Wing",5],["Aerocuda Eyeball",6],["Keese Wing",5],["Rupee",50]],"3":[["Aerocuda Wing",6],["Aerocuda Eyeball",8],["Rupee",200]],"4":[["Gleeok Wing",12],["Aerocuda Wing",10],["Gibdo Wing",8],["Rupee",500]]}},{"set":"Glide","name":"Glide Tights","upgradeable":true,"costs":{"1":[["Keese Wing",3],["Rupee",10]],"2":[["Aerocuda Wing",5],["Aerocuda Eyeball",6],["Keese Wing",5],["Rupee",50]],"3":[["Aerocuda Wing",6],["Aerocuda Eyeball",8],["Rupee",200]],"4":[["Gleeok Wing",12],["Aerocuda Wing",10],["Gibdo Wing",8],["Rupee",500]]}},{"set":"Hero","name":"Cap of the Hero","upgradeable":true,"costs":{"1":[["Ruby",1],["Star Fragment",1],["Rupee",10]],"2":[["Ruby",4],["Star Fragment",1],["Rupee",50]],"3":[["Ruby",6],["Star Fragment",1],["Rupee",200]],"4":[["Ruby",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Hero","name":"Trousers of the Hero","upgradeable":true,"costs":{"1":[["Ruby",1],["Star Fragment",1],["Rupee",10]],"2":[["Ruby",4],["Star Fragment",1],["Rupee",50]],"3":[["Ruby",6],["Star Fragment",1],["Rupee",200]],"4":[["Ruby",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Hero","name":"Tunic of the Hero","upgradeable":true,"costs":{"1":[["Ruby",1],["Star Fragment",1],["Rupee",10]],"2":[["Ruby",4],["Star Fragment",1],["Rupee",50]],"3":[["Ruby",6],["Star Fragment",1],["Rupee",200]],"4":[["Ruby",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Hylian","name":"Hylian Hood","upgradeable":true,"costs":{"1":[["Bokoblin Horn",5],["Rupee",10]],"2":[["Blue Bokoblin Horn",5],["Bokoblin Fang",3],["Rupee",50]],"3":[["Black Bokoblin Horn",5],["Bokoblin Guts",3],["Amber",20],["Rupee",200]],"4":[["Silver Bokoblin Horn",5],["Bokoblin Guts",5],["Amber",30],["Rupee",500]]},"unlockCost":[["Rupee",70]]},{"set":"Hylian","name":"Hylian Trousers","upgradeable":true,"costs":{"1":[["Bokoblin Horn",5],["Rupee",10]],"2":[["Blue Bokoblin Horn",5],["Bokoblin Fang",3],["Rupee",50]],"3":[["Black Bokoblin Horn",5],["Bokoblin Guts",3],["Amber",20],["Rupee",200]],"4":[["Silver Bokoblin Horn",5],["Bokoblin Guts",5],["Amber",30],["Rupee",500]]},"unlockCost":[["Rupee",120]]},{"set":"Hylian","name":"Hylian Tunic","upgradeable":true,"costs":{"1":[["Bokoblin Horn",5],["Rupee",10]],"2":[["Blue Bokoblin Horn",5],["Bokoblin Fang",3],["Rupee",50]],"3":[["Black Bokoblin Horn",5],["Bokoblin Guts",3],["Amber",20],["Rupee",200]],"4":[["Silver Bokoblin Horn",5],["Bokoblin Guts",5],["Amber",30],["Rupee",500]]},"unlockCost":[["Rupee",130]]},{"set":"Jewelry","name":"Amber Earrings","upgradeable":true,"costs":{"1":[["Amber",10],["Flint",5],["Rupee",10]],"2":[["Amber",20],["Flint",10],["Rupee",50]],"3":[["Amber",35],["Flint",15],["Rupee",200]],"4":[["Amber",60],["Flint",25],["Rupee",500]]},"unlockCost":[["Rupee",400]]},{"set":"Jewelry","name":"Diamond Circlet","upgradeable":true,"costs":{"1":[["Diamond",2],["Flint",3],["Rupee",10]],"2":[["Diamond",3],["Flint",5],["Rupee",50]],"3":[["Diamond",5],["Star Fragment",1],["Rupee",200]],"4":[["Diamond",8],["Star Fragment",2],["Rupee",500]]},"unlockCost":[["Rupee",2400]]},{"set":"Jewelry","name":"Opal Earrings","upgradeable":true,"costs":{"1":[["Opal",6],["Flint",5],["Rupee",10]],"2":[["Opal",12],["Flint",10],["Rupee",50]],"3":[["Opal",18],["Flint",15],["Rupee",200]],"4":[["Opal",30],["Flint",25],["Rupee",500]]},"unlockCost":[["Rupee",700]]},{"set":"Jewelry","name":"Ruby Circlet","upgradeable":true,"costs":{"1":[["Ruby",2],["Flint",3],["Rupee",10]],"2":[["Ruby",4],["Flint",5],["Rupee",50]],"3":[["Ruby",6],["Star Fragment",1],["Rupee",200]],"4":[["Ruby",10],["Star Fragment",2],["Rupee",500]]},"unlockCost":[["Rupee",1300]]},{"set":"Jewelry","name":"Sapphire Circlet","upgradeable":true,"costs":{"1":[["Sapphire",2],["Flint",3],["Rupee",10]],"2":[["Sapphire",4],["Flint",5],["Rupee",50]],"3":[["Sapphire",6],["Star Fragment",1],["Rupee",200]],"4":[["Sapphire",10],["Star Fragment",2],["Rupee",500]]},"unlockCost":[["Rupee",1300]]},{"set":"Jewelry","name":"Topaz Earrings","upgradeable":true,"costs":{"1":[["Topaz",2],["Flint",3],["Rupee",10]],"2":[["Topaz",4],["Flint",5],["Rupee",50]],"3":[["Topaz",6],["Star Fragment",1],["Rupee",200]],"4":[["Topaz",10],["Star Fragment",2],["Rupee",500]]},"unlockCost":[["Rupee",1300]]},{"set":"Miner","name":"Miner's Mask","upgradeable":true,"costs":{"1":[["Brightbloom Seed",10],["Rupee",10]],"2":[["Brightbloom Seed",20],["Brightcap",5],["Rupee",50]],"3":[["Giant Brightbloom Seed",15],["Glowing Cave Fish",5],["Deep Firefly",10],["Rupee",200]],"4":[["Giant Brightbloom Seed",20],["Diamond",3],["Large Zonaite",10],["Rupee",500]]}},{"set":"Miner","name":"Miner's Top","upgradeable":true,"costs":{"1":[["Brightbloom Seed",10],["Rupee",10]],"2":[["Brightbloom Seed",20],["Brightcap",5],["Rupee",50]],"3":[["Giant Brightbloom Seed",15],["Glowing Cave Fish",5],["Deep Firefly",10],["Rupee",200]],"4":[["Giant Brightbloom Seed",20],["Diamond",3],["Large Zonaite",10],["Rupee",500]]}},{"set":"Miner","name":"Miner's Trousers","upgradeable":true,"costs":{"1":[["Brightbloom Seed",10],["Rupee",10]],"2":[["Brightbloom Seed",20],["Brightcap",5],["Rupee",50]],"3":[["Giant Brightbloom Seed",15],["Glowing Cave Fish",5],["Deep Firefly",10],["Rupee",200]],"4":[["Giant Brightbloom Seed",20],["Diamond",3],["Large Zonaite",10],["Rupee",500]]}},{"set":"Monster Mask","name":"Bokoblin Mask","upgradeable":false,"unlockCost":[]},{"set":"Monster Mask","name":"Horriblin Mask","upgradeable":false,"unlockCost":[]},{"set":"Monster Mask","name":"Lizalfos Mask","upgradeable":false,"unlockCost":[]},{"set":"Monster Mask","name":"Lynel Mask","upgradeable":false,"unlockCost":[]},{"set":"Monster Mask","name":"Moblin Mask","upgradeable":false,"unlockCost":[]},{"set":"Mystic","name":"Mystic Headpiece","upgradeable":false,"unlockCost":[]},{"set":"Mystic","name":"Mystic Robe","upgradeable":false,"unlockCost":[]},{"set":"Mystic","name":"Mystic Trousers","upgradeable":false,"unlockCost":[]},{"set":"Phantom","name":"Phantom Armor","upgradeable":false,"unlockCost":[]},{"set":"Phantom","name":"Phantom Greaves","upgradeable":false,"unlockCost":[]},{"set":"Phantom","name":"Phantom Helm","upgradeable":false,"unlockCost":[]},{"set":"Radiant","name":"Radiant Mask","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Bokoblin Guts",1],["Rupee",10]],"2":[["Luminous Stone",15],["Moblin Guts",2],["Rupee",50]],"3":[["Luminous Stone",20],["Horriblin Guts",3],["Gibdo Bone",10],["Rupee",200]],"4":[["Luminous Stone",30],["Lynel Guts",3],["Molduga Jaw",3],["Rupee",500]]},"unlockCost":[["Rupee",800]]},{"set":"Radiant","name":"Radiant Shirt","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Bokoblin Guts",1],["Rupee",10]],"2":[["Luminous Stone",15],["Moblin Guts",2],["Rupee",50]],"3":[["Luminous Stone",20],["Horriblin Guts",3],["Gibdo Bone",10],["Rupee",200]],"4":[["Luminous Stone",30],["Lynel Guts",3],["Molduga Jaw",3],["Rupee",500]]},"unlockCost":[["Rupee",800]]},{"set":"Radiant","name":"Radiant Tights","upgradeable":true,"costs":{"1":[["Luminous Stone",10],["Bokoblin Guts",1],["Rupee",10]],"2":[["Luminous Stone",15],["Moblin Guts",2],["Rupee",50]],"3":[["Luminous Stone",20],["Horriblin Guts",3],["Gibdo Bone",10],["Rupee",200]],"4":[["Luminous Stone",30],["Lynel Guts",3],["Molduga Jaw",3],["Rupee",500]]},"unlockCost":[["Rupee",800]]},{"set":"Royal Guard","name":"Royal Guard Boots","upgradeable":true,"costs":{"1":[["Boss Bokoblin Horn",3],["Bokoblin Guts",3],["Rupee",10]],"2":[["Blue Boss Bokoblin Horn",3],["Boss Bokoblin Guts",3],["Rupee",50]],"3":[["Black Boss Bokoblin Horn",3],["Hinox Guts",3],["Rupee",200]],"4":[["Silver Boss Bokoblin Horn",3],["Molduga Guts",3],["Gleeok Guts",3],["Rupee",500]]}},{"set":"Royal Guard","name":"Royal Guard Cap","upgradeable":true,"costs":{"1":[["Boss Bokoblin Horn",3],["Bokoblin Guts",3],["Rupee",10]],"2":[["Blue Boss Bokoblin Horn",3],["Boss Bokoblin Guts",3],["Rupee",50]],"3":[["Black Boss Bokoblin Horn",3],["Hinox Guts",3],["Rupee",200]],"4":[["Silver Boss Bokoblin Horn",3],["Molduga Guts",3],["Gleeok Guts",3],["Rupee",500]]}},{"set":"Royal Guard","name":"Royal Guard Uniform","upgradeable":true,"costs":{"1":[["Boss Bokoblin Horn",3],["Bokoblin Guts",3],["Rupee",10]],"2":[["Blue Boss Bokoblin Horn",3],["Boss Bokoblin Guts",3],["Rupee",50]],"3":[["Black Boss Bokoblin Horn",3],["Hinox Guts",3],["Rupee",200]],"4":[["Silver Boss Bokoblin Horn",3],["Molduga Guts",3],["Gleeok Guts",3],["Rupee",500]]}},{"set":"Rubber","name":"Rubber Armor","upgradeable":true,"costs":{"1":[["Electric Lizalfos Horn",1],["Yelllow Chuchu Jelly",3],["Rupee",10]],"2":[["Yelllow Chuchu Jelly",8],["Voltfruit",5],["Rupee",50]],"3":[["Zapshroom",5],["Electric Lizalfos Tail",5],["Electric Safflina",8],["Rupee",200]],"4":[["Electric Lizalfos Horn",5],["Topaz",5],["Electric Lizalfos Tail",8],["Rupee",500]]}},{"set":"Rubber","name":"Rubber Helm","upgradeable":true,"costs":{"1":[["Electric Lizalfos Horn",1],["Yelllow Chuchu Jelly",3],["Rupee",10]],"2":[["Yelllow Chuchu Jelly",8],["Voltfruit",5],["Rupee",50]],"3":[["Zapshroom",5],["Electric Lizalfos Tail",5],["Electric Safflina",8],["Rupee",200]],"4":[["Electric Lizalfos Horn",5],["Topaz",5],["Electric Lizalfos Tail",8],["Rupee",500]]}},{"set":"Rubber","name":"Rubber Tights","upgradeable":true,"costs":{"1":[["Electric Lizalfos Horn",1],["Yelllow Chuchu Jelly",3],["Rupee",10]],"2":[["Yelllow Chuchu Jelly",8],["Voltfruit",5],["Rupee",50]],"3":[["Zapshroom",5],["Electric Lizalfos Tail",5],["Electric Safflina",8],["Rupee",200]],"4":[["Electric Lizalfos Horn",5],["Topaz",5],["Electric Lizalfos Tail",8],["Rupee",500]]}},{"set":"Sky","name":"Cap of the Sky","upgradeable":true,"costs":{"1":[["Sapphire",1],["Star Fragment",1],["Rupee",10]],"2":[["Sapphire",4],["Star Fragment",1],["Rupee",50]],"3":[["Sapphire",6],["Star Fragment",1],["Rupee",200]],"4":[["Sapphire",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Sky","name":"Trousers of the Sky","upgradeable":true,"costs":{"1":[["Sapphire",1],["Star Fragment",1],["Rupee",10]],"2":[["Sapphire",4],["Star Fragment",1],["Rupee",50]],"3":[["Sapphire",6],["Star Fragment",1],["Rupee",200]],"4":[["Sapphire",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Sky","name":"Tunic of the Sky","upgradeable":true,"costs":{"1":[["Sapphire",1],["Star Fragment",1],["Rupee",10]],"2":[["Sapphire",4],["Star Fragment",1],["Rupee",50]],"3":[["Sapphire",6],["Star Fragment",1],["Rupee",200]],"4":[["Sapphire",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Snowquill","name":"Snowquill Headdress","upgradeable":true,"costs":{"1":[["Red Chuchu Jelly",3],["Rupee",10]],"2":[["Red Chuchu Jelly",5],["Warm Safflina",3],["Rupee",50]],"3":[["Fire Keese Wing",5],["Fire-Breath Lizalfos Tail",3],["Sunshroom",5],["Rupee",200]],"4":[["Fire-Breath Lizalfos Horn",5],["Fire-Breath Lizalfos Tail",10],["Ruby",5],["Rupee",500]]},"unlockCost":[["Rupee",650]]},{"set":"Snowquill","name":"Snowquill Trousers","upgradeable":true,"costs":{"1":[["Red Chuchu Jelly",3],["Rupee",10]],"2":[["Red Chuchu Jelly",5],["Warm Safflina",3],["Rupee",50]],"3":[["Fire Keese Wing",5],["Fire-Breath Lizalfos Tail",3],["Sunshroom",5],["Rupee",200]],"4":[["Fire-Breath Lizalfos Horn",5],["Fire-Breath Lizalfos Tail",10],["Ruby",5],["Rupee",500]]},"unlockCost":[["Rupee",1000]]},{"set":"Snowquill","name":"Snowquill Tunic","upgradeable":true,"costs":{"1":[["Red Chuchu Jelly",3],["Rupee",10]],"2":[["Red Chuchu Jelly",5],["Warm Safflina",3],["Rupee",50]],"3":[["Fire Keese Wing",5],["Fire-Breath Lizalfos Tail",3],["Sunshroom",5],["Rupee",200]],"4":[["Fire-Breath Lizalfos Horn",5],["Fire-Breath Lizalfos Tail",10],["Ruby",5],["Rupee",500]]},"unlockCost":[["Rupee",500]]},{"set":"Soldier","name":"Soldier's Armor","upgradeable":true,"costs":{"1":[["Chuchu Jelly",5],["Bokoblin Guts",3],["Rupee",10]],"2":[["Keese Eyeball",5],["Moblin Guts",3],["Rupee",50]],"3":[["Lizalfos Tail",3],["Hinox Guts",3],["Flint",30],["Rupee",200]],"4":[["Amber",30],["Lynel Hoof",5],["Lynel Guts",5],["Rupee",500]]}},{"set":"Soldier","name":"Soldier's Greaves","upgradeable":true,"costs":{"1":[["Chuchu Jelly",5],["Bokoblin Guts",3],["Rupee",10]],"2":[["Keese Eyeball",5],["Moblin Guts",3],["Rupee",50]],"3":[["Lizalfos Tail",3],["Hinox Guts",3],["Flint",30],["Rupee",200]],"4":[["Amber",30],["Lynel Hoof",5],["Lynel Guts",5],["Rupee",500]]}},{"set":"Soldier","name":"Soldier's Helm","upgradeable":true,"costs":{"1":[["Chuchu Jelly",5],["Bokoblin Guts",3],["Rupee",10]],"2":[["Keese Eyeball",5],["Moblin Guts",3],["Rupee",50]],"3":[["Lizalfos Tail",3],["Hinox Guts",3],["Flint",30],["Rupee",200]],"4":[["Amber",30],["Lynel Hoof",5],["Lynel Guts",5],["Rupee",500]]}},{"set":"Stealth","name":"Stealth Chest Guard","upgradeable":true,"costs":{"1":[["Blue Nightshade",3],["Rupee",10]],"2":[["Blue Nightshade",5],["Sunset Firefly",5],["Rupee",50]],"3":[["Silent Shroom",8],["Sneaky River Snail",5],["Sticky Frog",5],["Rupee",200]],"4":[["Stealthfin Trout",10],["Silent Princess",5],["Sundelion",10],["Rupee",500]]},"unlockCost":[["Rupee",700]]},{"set":"Stealth","name":"Stealth Mask","upgradeable":true,"costs":{"1":[["Blue Nightshade",3],["Rupee",10]],"2":[["Blue Nightshade",5],["Sunset Firefly",5],["Rupee",50]],"3":[["Silent Shroom",8],["Sneaky River Snail",5],["Sticky Frog",5],["Rupee",200]],"4":[["Stealthfin Trout",10],["Silent Princess",5],["Sundelion",10],["Rupee",500]]},"unlockCost":[["Rupee",500]]},{"set":"Stealth","name":"Stealth Tights","upgradeable":true,"costs":{"1":[["Blue Nightshade",3],["Rupee",10]],"2":[["Blue Nightshade",5],["Sunset Firefly",5],["Rupee",50]],"3":[["Silent Shroom",8],["Sneaky River Snail",5],["Sticky Frog",5],["Rupee",200]],"4":[["Stealthfin Trout",10],["Silent Princess",5],["Sundelion",10],["Rupee",500]]},"unlockCost":[["Rupee",600]]},{"set":"Time","name":"Cap of Time","upgradeable":true,"costs":{"1":[["Amber",10],["Star Fragment",1],["Rupee",10]],"2":[["Amber",20],["Star Fragment",1],["Rupee",50]],"3":[["Amber",30],["Star Fragment",1],["Rupee",200]],"4":[["Amber",40],["Star Fragment",1],["Rupee",500]]}},{"set":"Time","name":"Trousers of Time","upgradeable":true,"costs":{"1":[["Amber",10],["Star Fragment",1],["Rupee",10]],"2":[["Amber",20],["Star Fragment",1],["Rupee",50]],"3":[["Amber",30],["Star Fragment",1],["Rupee",200]],"4":[["Amber",40],["Star Fragment",1],["Rupee",500]]}},{"set":"Time","name":"Tunic of Time","upgradeable":true,"costs":{"1":[["Amber",10],["Star Fragment",1],["Rupee",10]],"2":[["Amber",20],["Star Fragment",1],["Rupee",50]],"3":[["Amber",30],["Star Fragment",1],["Rupee",200]],"4":[["Amber",40],["Star Fragment",1],["Rupee",500]]}},{"set":"Tingle","name":"Tingle's Hood","upgradeable":false,"unlockCost":[]},{"set":"Tingle","name":"Tingle's Shirt","upgradeable":false,"unlockCost":[]},{"set":"Tingle","name":"Tingle's Tights","upgradeable":false,"unlockCost":[]},{"set":"Twilight","name":"Cap of Twilight","upgradeable":true,"costs":{"1":[["Topaz",1],["Star Fragment",1],["Rupee",10]],"2":[["Topaz",4],["Star Fragment",1],["Rupee",50]],"3":[["Topaz",6],["Star Fragment",1],["Rupee",200]],"4":[["Topaz",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Twilight","name":"Trousers of Twilight","upgradeable":true,"costs":{"1":[["Topaz",1],["Star Fragment",1],["Rupee",10]],"2":[["Topaz",4],["Star Fragment",1],["Rupee",50]],"3":[["Topaz",6],["Star Fragment",1],["Rupee",200]],"4":[["Topaz",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Twilight","name":"Tunic of Twilight","upgradeable":true,"costs":{"1":[["Topaz",1],["Star Fragment",1],["Rupee",10]],"2":[["Topaz",4],["Star Fragment",1],["Rupee",50]],"3":[["Topaz",6],["Star Fragment",1],["Rupee",200]],"4":[["Topaz",10],["Star Fragment",1],["Rupee",500]]}},{"set":"Wild","name":"Cap of the Wild","upgradeable":true,"costs":{"1":[["Acorn",10],["Farosh's Scale",2],["Rupee",10]],"2":[["Courser Bee Honey",5],["Farosh's Claw",2],["Rupee",50]],"3":[["Energetic Rhino Beetle",3],["Shard of Farosh's Fang",2],["Shard of Farosh's Spike",5],["Rupee",200]],"4":[["Farosh's Horn",2],["Star Fragment",3],["Shard of Farosh's Spike",10],["Rupee",500]]}},{"set":"Wild","name":"Trousers of the Wild","upgradeable":true,"costs":{"1":[["Acorn",10],["Dinraal's Scale",2],["Rupee",10]],"2":[["Courser Bee Honey",5],["Dinraal's Claw",2],["Rupee",50]],"3":[["Energetic Rhino Beetle",3],["Shard of Dinraal's Fang",2],["Shard of Dinraal's Spike",5],["Rupee",200]],"4":[["Dinraal's Horn",2],["Star Fragment",3],["Shard of Dinraal's Spike",10],["Rupee",500]]}},{"set":"Wild","name":"Tunic of the Wild","upgradeable":true,"costs":{"1":[["Acorn",10],["Naydra's Scale",2],["Rupee",10]],"2":[["Courser Bee Honey",5],["Naydra's Claw",2],["Rupee",50]],"3":[["Energetic Rhino Beetle",3],["Shard of Naydra's Fang",2],["Shard of Naydra's Spike",5],["Rupee",200]],"4":[["Dinraal's Horn",2],["Star Fragment",3],["Shard of Naydra's Spike",10],["Rupee",500]]}},{"set":"Wind","name":"Cap of the Wind","upgradeable":true,"costs":{"1":[["Opal",5],["Star Fragment",1],["Rupee",10]],"2":[["Opal",10],["Star Fragment",1],["Rupee",50]],"3":[["Opal",15],["Star Fragment",1],["Rupee",200]],"4":[["Opal",25],["Star Fragment",1],["Rupee",500]]}},{"set":"Wind","name":"Trousers of the Wind","upgradeable":true,"costs":{"1":[["Opal",5],["Star Fragment",1],["Rupee",10]],"2":[["Opal",10],["Star Fragment",1],["Rupee",50]],"3":[["Opal",15],["Star Fragment",1],["Rupee",200]],"4":[["Opal",25],["Star Fragment",1],["Rupee",500]]}},{"set":"Wind","name":"Tunic of the Wind","upgradeable":true,"costs":{"1":[["Opal",5],["Star Fragment",1],["Rupee",10]],"2":[["Opal",10],["Star Fragment",1],["Rupee",50]],"3":[["Opal",15],["Star Fragment",1],["Rupee",200]],"4":[["Opal",25],["Star Fragment",1],["Rupee",500]]}},{"set":"Yiga","name":"Yiga Armor","upgradeable":true,"costs":{"1":[["Octorok Eyeball",2],["Rupee",10]],"2":[["Fire-Breath Lizalfos Tail",3],["Puffshroom",3],["Rupee",50]],"3":[["Keese Eyeball",5],["Ice-Breath Lizalfos Tail",5],["Rupee",200]],"4":[["Electric Lizalfos Tail",5],["Black Hinox Horn",3],["Mighty Banana",10],["Rupee",500]]}},{"set":"Yiga","name":"Yiga Mask","upgradeable":true,"costs":{"1":[["Octorok Eyeball",2],["Rupee",10]],"2":[["Fire-Breath Lizalfos Tail",3],["Puffshroom",3],["Rupee",50]],"3":[["Keese Eyeball",5],["Rupee",200]],"4":[["Ice-Breath Lizalfos Tail",5],["Electric Lizalfos Tail",5],["Black Hinox Horn",3],["Mighty Banana",10],["Rupee",500]]}},{"set":"Yiga","name":"Yiga Tights","upgradeable":true,"costs":{"1":[["Octorok Eyeball",2],["Rupee",10]],"2":[["Fire-Breath Lizalfos Tail",3],["Puffshroom",3],["Rupee",50]],"3":[["Keese Eyeball",5],["Ice-Breath Lizalfos Tail",5],["Rupee",200]],"4":[["Electric Lizalfos Tail",5],["Black Hinox Horn",3],["Mighty Banana",10],["Rupee",500]]}},{"set":"Zonaite","name":"Zonaite Helm","upgradeable":true,"costs":{"1":[["Soldier Construct Horn",5],["Rupee",10]],"2":[["Soldier Construct II Horn",5],["Captain Construct I Horn",5],["Zonaite",5],["Rupee",50]],"3":[["Soldier Construct III Horn",5],["Captain Construct II Horn",5],["Large Zonaite",5],["Rupee",200]],"4":[["Soldier Construct IV Horn",5],["Captain Construct III Horn",5],["Large Zonaite",10],["Rupee",500]]}},{"set":"Zonaite","name":"Zonaite Shin Guards","upgradeable":true,"costs":{"1":[["Soldier Construct Horn",5],["Rupee",10]],"2":[["Soldier Construct II Horn",5],["Captain Construct I Horn",5],["Zonaite",5],["Rupee",50]],"3":[["Soldier Construct III Horn",5],["Captain Construct II Horn",5],["Large Zonaite",5],["Rupee",200]],"4":[["Soldier Construct IV Horn",5],["Captain Construct III Horn",5],["Large Zonaite",10],["Rupee",500]]}},{"set":"Zonaite","name":"Zonaite Waistguard","upgradeable":true,"costs":{"1":[["Soldier Construct Horn",5],["Rupee",10]],"2":[["Soldier Construct II Horn",5],["Captain Construct I Horn",5],["Zonaite",5],["Rupee",50]],"3":[["Soldier Construct III Horn",5],["Captain Construct II Horn",5],["Large Zonaite",5],["Rupee",200]],"4":[["Soldier Construct IV Horn",5],["Captain Construct III Horn",5],["Large Zonaite",10],["Rupee",500]]}},{"set":"Zora","name":"Zora Armor","upgradeable":true,"costs":{"1":[["Lizalfos Horn",3],["Rupee",10]],"2":[["Lizalfos Talon",5],["Hyrule Bass",5],["Rupee",50]],"3":[["Blue Lizalfos Horn",5],["Lizalfos Tail",3],["Hearty Bass",3],["Rupee",200]],"4":[["Black Lizalfos Horn",5],["Blue Lizalfos Tail",5],["Opal",20],["Rupee",500]]}},{"set":"Zora","name":"Zora Greaves","upgradeable":true,"costs":{"1":[["Lizalfos Horn",3],["Rupee",10]],"2":[["Lizalfos Talon",5],["Hyrule Bass",5],["Rupee",50]],"3":[["Blue Lizalfos Horn",5],["Lizalfos Tail",3],["Hearty Bass",3],["Rupee",200]],"4":[["Black Lizalfos Horn",5],["Blue Lizalfos Tail",5],["Opal",20],["Rupee",500]]}},{"set":"Zora","name":"Zora Helm","upgradeable":true,"costs":{"1":[["Lizalfos Horn",3],["Rupee",10]],"2":[["Lizalfos Talon",5],["Hyrule Bass",5],["Rupee",50]],"3":[["Blue Lizalfos Horn",5],["Lizalfos Tail",3],["Hearty Bass",3],["Rupee",200]],"4":[["Black Lizalfos Horn",5],["Blue Lizalfos Tail",5],["Opal",20],["Rupee",500]]}},{"set":"","name":"Ancient Hero's Aspect","upgradeable":true,"costs":{"1":[["Silver Bokoblin Horn",9],["Hinox Guts",9],["Zonaite",15],["Rupee",30]],"2":[["Silver Moblin Horn",9],["Frox Guts",9],["Large Zonaite",10],["Rupee",150]],"3":[["Silver Lizalfos Horn",9],["Molduga Guts",9],["Large Zonaite",15],["Rupee",600]],"4":[["Silver Lynel Mace Horn",9],["Silver Lynel Saber Horn",9],["Gleeok Guts",9],["Rupee",1500]]}},{"set":"","name":"Archaic Legwear","upgradeable":false,"unlockCost":[]},{"set":"","name":"Archaic Tunic","upgradeable":false,"unlockCost":[]},{"set":"","name":"Archaic Warm Greaves","upgradeable":false,"unlockCost":[]},{"set":"","name":"Cece Hat","upgradeable":false,"unlockCost":[]},{"set":"","name":"Champion's Leathers","upgradeable":true,"costs":{"1":[["Silent Princess",3],["Light Dragon's Scale",2],["Rupee",10]],"2":[["Silent Princess",3],["Light Dragon's Talon",2],["Sundelion",10],["Rupee",50]],"3":[["Silent Princess",5],["Light Dragon's Fang",2],["Sundelion",15],["Rupee",200]],"4":[["Silent Princess",10],["Light Dragon's Horn",2],["Sundelion",20],["Rupee",500]]}},{"set":"","name":"Island Lobster Shirt","upgradeable":false,"unlockCost":[]},{"set":"","name":"Korok Mask","upgradeable":false,"unlockCost":[]},{"set":"","name":"Lightning Helm","upgradeable":false,"unlockCost":[]},{"set":"","name":"Majora's Mask","upgradeable":false,"unlockCost":[]},{"set":"","name":"Midna's Helmet","upgradeable":false,"unlockCost":[]},{"set":"","name":"Ravio's Hood","upgradeable":false,"unlockCost":[]},{"set":"","name":"Sand Boots","upgradeable":true,"costs":{"1":[["Hightail Lizard",3],["Rupee",10]],"2":[["Gibdo Bone",20],["Swift Carrot",5],["Rupee",50]],"3":[["Gibdo Guts",5],["Rushroom",10],["Molduga Fin",5],["Rupee",200]],"4":[["Molduga Guts",5],["Swift Violet",10],["Hearty Lizard",5],["Rupee",500]]},"unlockCost":[["Rupee",1200]]},{"set":"","name":"Shiek's Mask","upgradeable":true,"costs":{"1":[["Silent Princess",1],["Star Fragment",1],["Rupee",10]],"2":[["Silent Princess",2],["Star Fragment",2],["Rupee",50]],"3":[["Silent Princess",4],["Star Fragment",3],["Rupee",200]],"4":[["Silent Princess",8],["Star Fragment",4],["Rupee",500]]}},{"set":"","name":"Snow Boots","upgradeable":true,"costs":{"1":[["Hightail Lizard",3],["Rupee",10]],"2":[["Octorok Tentacle",5],["Swift Carrot",5],["Rupee",50]],"3":[["Octo Balloon",5],["Rushroom",20],["Rupee",200]],"4":[["Swift Violet",20],["Naydra's Scale",2],["Rupee",500]]},"unlockCost":[["Rupee",1300]]},{"set":"","name":"Tunic of Memories","upgradeable":true,"costs":{"1":[["Silent Princess",3],["Light Dragon's Scale",1]],"2":[["Silent Princess",3],["Light Dragon's Talon",1],["Farosh's Horn",2]],"3":[["Silent Princess",5],["Light Dragon's Fang",1],["Naydra's Horn",2]],"4":[["Silent Princess",10],["Light Dragon's Horn",1],["Dinraal's Horn",2]]},"unlockCost":[["Poe",400]]},{"set":"","name":"Well-Worn Hair Band","upgradeable":false,"unlockCost":[]},{"set":"","name":"Zant's Helmet","upgradeable":false,"unlockCost":[]}];
+
+// ---- Storage ----
+const NEEDS_KEY = "totk_tracker_needs_v2";
+const HAVES_KEY = "totk_tracker_haves_v2";
+const ARMOR_KEY = "totk_tracker_armor_v2";
+const FILTER_KEY = "totk_tracker_filter_v2";
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) { return fallback; }
+}
+function saveJSON(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); }
+  catch (e) { console.error("Storage error:", e); }
+}
+
+let needs = loadJSON(NEEDS_KEY, {});      // legacy import/export field; Need is computed dynamically
+let haves = loadJSON(HAVES_KEY, {});      // have counts, keyed by item id (string)
+let armorState = loadJSON(ARMOR_KEY, {}); // keyed by "set|name" -> {level, owned} or {owned}
+let filterOwned = loadJSON(FILTER_KEY, false);
+
+// Migration: old data may have {level: N} with no "owned" key for upgradeable
+// pieces. Treat any such pre-existing entry as owned, so previously-recorded
+// progress doesn't silently stop counting.
+(function migrateArmorState() {
+  let changed = false;
+  ARMOR.forEach(a => {
+    if (!a.upgradeable) return;
+    const key = a.set + "|" + a.name;
+    const state = armorState[key];
+    if (state && typeof state.level === "number" && typeof state.owned === "undefined") {
+      armorState[key] = { level: state.level, owned: true };
+      changed = true;
+    }
+  });
+  if (changed) saveJSON(ARMOR_KEY, armorState);
+})();
+
+// ---- Computed Need from armor data ----
+// onlyOwned=false: cost to fully upgrade/unlock everything (default, "need everything")
+// onlyOwned=true: cost narrowed to only pieces marked Owned, using remaining levels
+function computeArmorNeeds(onlyOwned) {
+  const totals = {};
+  ARMOR.forEach(a => {
+    const key = a.set + "|" + a.name;
+    const state = armorState[key];
+    const owned = !!(state && state.owned);
+
+    if (onlyOwned && !owned) return; // narrowed view: skip pieces you don't own
+
+    if (a.upgradeable) {
+      // Upgradeable pieces can still have a level-0 purchase/unlock cost
+      // in the CSV. Count that cost until the piece is marked owned.
+      if (!owned && a.unlockCost && a.unlockCost.length) {
+        a.unlockCost.forEach(([item, qty]) => {
+          totals[item] = (totals[item] || 0) + qty;
+        });
+      }
+
+      const level = (owned && state && typeof state.level === "number") ? state.level : 0;
+      for (let lvl = level + 1; lvl <= 4; lvl++) {
+        const costs = a.costs[String(lvl)] || [];
+        costs.forEach(([item, qty]) => {
+          totals[item] = (totals[item] || 0) + qty;
+        });
+      }
+    } else {
+      // Non-upgradeable: unlock cost counts unless already marked owned (unlocked)
+      if (!owned && a.unlockCost && a.unlockCost.length) {
+        a.unlockCost.forEach(([item, qty]) => {
+          totals[item] = (totals[item] || 0) + qty;
+        });
+      }
+    }
+  });
+  return totals;
+}
+
+// ---- Materials tab ----
+let sortState = { col: "id", dir: 1 };
+
+function getRows() {
+  const armorNeeds = computeArmorNeeds(filterOwned);
+  return MATERIALS.map(([id, name]) => {
+    const have = haves[id] || 0;
+    const need = armorNeeds[name] || 0;
+    const safe = have - need;
+    return { id, name, have, need, safe };
+  });
+}
+
+function renderMaterials() {
+  const tbody = document.getElementById("tbody");
+  const searchTerm = document.getElementById("searchBox").value.trim().toLowerCase();
+  let rows = getRows();
+
+  rows.sort((a, b) => {
+    const c = sortState.col;
+    let av = a[c], bv = b[c];
+    if (typeof av === "string") return sortState.dir * av.localeCompare(bv);
+    return sortState.dir * (av - bv);
+  });
+
+  tbody.innerHTML = "";
+  let withNeed = 0, short = 0, shown = 0;
+
+  rows.forEach(r => {
+    if (r.need > 0) withNeed++;
+    if (r.safe < 0) short++;
+
+    const matchesSearch = !searchTerm || r.name.toLowerCase().includes(searchTerm);
+    const matchesFilter = !filterOwned || r.need > 0;
+    const visible = matchesSearch && matchesFilter;
+    if (visible) shown++;
+
+    const tr = document.createElement("tr");
+    if (!visible) tr.classList.add("hidden");
+
+    const safeClass = r.safe < 0 ? "short" : (r.safe === 0 ? "zero" : "safe");
+    const safeText = r.safe < 0 ? `Short ${Math.abs(r.safe)}` : r.safe;
+    tr.innerHTML = `
+      <td class="id-col">${r.id}</td>
+      <td>${r.name}</td>
+      <td class="num">
+        <label class="sr-only" for="have-${r.id}">${r.name} have</label>
+        <input type="number" inputmode="numeric" min="0" autocomplete="off" id="have-${r.id}" data-id="${r.id}" data-field="have">
+      </td>
+      <td class="num">
+        <span class="sr-only">${r.name} need: </span>
+        <span class="need-value" id="need-${r.id}">${r.need}</span>
+      </td>
+      <td class="num ${safeClass}">${safeText}</td>
+    `;
+    tbody.appendChild(tr);
+    // Set value via property (not the "value" attribute) to avoid mobile
+    // browsers restoring stale autofill/cached values on innerHTML rebuilds.
+    tr.querySelector(`#have-${r.id}`).value = r.have;
+  });
+
+  document.getElementById("totalItems").textContent = shown;
+  document.getElementById("itemsWithNeed").textContent = withNeed;
+  document.getElementById("itemsShort").textContent = short;
+}
+
+document.getElementById("tbody").addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.tagName !== "INPUT") return;
+  const id = t.dataset.id;
+  const field = t.dataset.field;
+  let val = parseInt(t.value, 10);
+  if (isNaN(val) || val < 0) val = 0;
+
+  if (field !== "have") return;
+
+  haves[id] = val;
+  saveJSON(HAVES_KEY, haves);
+  renderMaterials();
+  requestAnimationFrame(() => {
+    const newInput = document.getElementById(`have-${id}`);
+    if (newInput) {
+      newInput.focus();
+    }
+  });
+});
+
+document.getElementById("searchBox").addEventListener("input", renderMaterials);
+
+document.getElementById("filterOwned").checked = filterOwned;
+document.getElementById("filterOwned").addEventListener("change", (e) => {
+  filterOwned = e.target.checked;
+  saveJSON(FILTER_KEY, filterOwned);
+  renderMaterials();
+});
+
+document.getElementById("resetHaves").addEventListener("click", () => {
+  if (confirm("Reset all Have values to 0? This cannot be undone.")) {
+    haves = {};
+    saveJSON(HAVES_KEY, haves);
+    renderMaterials();
+  }
+});
+
+document.querySelectorAll("th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => sortClick(th));
+  th.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sortClick(th); }
+  });
+});
+function sortClick(th) {
+  const col = th.dataset.sort;
+  if (sortState.col === col) sortState.dir *= -1;
+  else { sortState.col = col; sortState.dir = 1; }
+  renderMaterials();
+}
+
+// ---- Armor tab ----
+
+// Set the "owned" flag for an armor piece, preserving its star level (if any).
+function setOwned(armorEntry, owned) {
+  const key = armorEntry.set + "|" + armorEntry.name;
+  const prev = armorState[key] || {};
+  if (armorEntry.upgradeable) {
+    armorState[key] = { level: prev.level || 0, owned };
+  } else {
+    armorState[key] = { owned };
+  }
+}
+
+function renderArmor() {
+  const container = document.getElementById("armorList");
+  const searchTerm = document.getElementById("armorSearchBox").value.trim().toLowerCase();
+  container.innerHTML = "";
+
+  // Group by set, preserving order of first appearance
+  const groups = [];
+  const groupMap = {};
+  ARMOR.forEach(a => {
+    const setName = a.set || "Other";
+    if (!groupMap[setName]) {
+      groupMap[setName] = { name: setName, items: [] };
+      groups.push(groupMap[setName]);
+    }
+    groupMap[setName].items.push(a);
+  });
+
+  groups.forEach(group => {
+    const filteredItems = group.items.filter(a =>
+      !searchTerm || a.name.toLowerCase().includes(searchTerm) || group.name.toLowerCase().includes(searchTerm)
+    );
+    if (filteredItems.length === 0) return;
+
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "armor-set-group";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "armor-set-title-row";
+
+    const title = document.createElement("div");
+    title.className = "armor-set-title";
+    title.textContent = group.name;
+    titleRow.appendChild(title);
+
+    const setAllBtn = document.createElement("button");
+    setAllBtn.className = "set-bulk-btn";
+    setAllBtn.textContent = "All";
+    setAllBtn.setAttribute("aria-label", `Mark all ${group.name} pieces as owned`);
+    setAllBtn.addEventListener("click", () => {
+      filteredItems.forEach(a => setOwned(a, true));
+      saveJSON(ARMOR_KEY, armorState);
+      renderArmor();
+      renderMaterials();
+    });
+    titleRow.appendChild(setAllBtn);
+
+    const setNoneBtn = document.createElement("button");
+    setNoneBtn.className = "set-bulk-btn";
+    setNoneBtn.textContent = "None";
+    setNoneBtn.setAttribute("aria-label", `Mark all ${group.name} pieces as not owned`);
+    setNoneBtn.addEventListener("click", () => {
+      filteredItems.forEach(a => setOwned(a, false));
+      saveJSON(ARMOR_KEY, armorState);
+      renderArmor();
+      renderMaterials();
+    });
+    titleRow.appendChild(setNoneBtn);
+
+    groupDiv.appendChild(titleRow);
+
+    filteredItems.forEach(a => {
+      const key = a.set + "|" + a.name;
+      const card = document.createElement("div");
+      card.className = "armor-card";
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "armor-name";
+      nameEl.textContent = a.name;
+      card.appendChild(nameEl);
+
+      const controls = document.createElement("div");
+      controls.className = "armor-controls";
+
+      if (a.upgradeable) {
+        const state = armorState[key] || { level: 0, owned: false };
+        const level = state.level || 0;
+        const owned = !!state.owned;
+
+        const toggleLabel = document.createElement("label");
+        toggleLabel.className = "owned-toggle";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = owned;
+        checkbox.id = "armor-" + key.replace(/[^a-zA-Z0-9]/g, "_");
+        checkbox.addEventListener("change", () => {
+          const prev = armorState[key] || { level: 0 };
+          armorState[key] = { level: prev.level || 0, owned: checkbox.checked };
+          saveJSON(ARMOR_KEY, armorState);
+          renderMaterials();
+        });
+        toggleLabel.setAttribute("for", checkbox.id);
+        toggleLabel.appendChild(checkbox);
+        toggleLabel.appendChild(document.createTextNode(" Owned"));
+        controls.appendChild(toggleLabel);
+
+        const starsDiv = document.createElement("div");
+        starsDiv.className = "stars";
+        starsDiv.setAttribute("role", "group");
+        starsDiv.setAttribute("aria-label", a.name + " upgrade level");
+        for (let i = 1; i <= 4; i++) {
+          const btn = document.createElement("button");
+          btn.className = "star-btn" + (i <= level ? " lit" : "");
+          btn.textContent = "★";
+          btn.setAttribute("aria-label", `Set ${a.name} to level ${i}`);
+          btn.setAttribute("aria-pressed", i <= level ? "true" : "false");
+          btn.addEventListener("click", () => {
+            const newLevel = (level === i) ? i - 1 : i; // tapping current top star toggles down
+            const prev = armorState[key] || { owned: false };
+            // Any upgraded level means the piece must be owned. If toggled back to 0,
+            // preserve the existing Owned state so users can track owned-but-unupgraded armor.
+            armorState[key] = { level: newLevel, owned: newLevel > 0 ? true : !!prev.owned };
+            saveJSON(ARMOR_KEY, armorState);
+            renderArmor();
+            renderMaterials();
+          });
+          starsDiv.appendChild(btn);
+        }
+        controls.appendChild(starsDiv);
+        if (level === 4) {
+          const badge = document.createElement("span");
+          badge.className = "maxed-badge";
+          badge.textContent = "Maxed";
+          controls.appendChild(badge);
+        }
+      } else {
+        const hasUnlockCost = a.unlockCost && a.unlockCost.length > 0;
+        const state = armorState[key] || { owned: false };
+        const owned = !!state.owned;
+
+        const toggleLabel = document.createElement("label");
+        toggleLabel.className = "owned-toggle";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = owned;
+        checkbox.id = "armor-" + key.replace(/[^a-zA-Z0-9]/g, "_");
+        checkbox.addEventListener("change", () => {
+          armorState[key] = { owned: checkbox.checked };
+          saveJSON(ARMOR_KEY, armorState);
+          renderMaterials();
+        });
+        toggleLabel.setAttribute("for", checkbox.id);
+        toggleLabel.appendChild(checkbox);
+        toggleLabel.appendChild(document.createTextNode(" Owned"));
+        controls.appendChild(toggleLabel);
+
+        if (!hasUnlockCost) {
+          const badge = document.createElement("span");
+          badge.className = "nocost-badge";
+          badge.textContent = "No material cost";
+          controls.appendChild(badge);
+        }
+      }
+
+      card.appendChild(controls);
+      groupDiv.appendChild(card);
+    });
+
+    container.appendChild(groupDiv);
+  });
+}
+
+document.getElementById("armorSearchBox").addEventListener("input", renderArmor);
+
+document.getElementById("markAllOwned").addEventListener("click", () => {
+  if (confirm("Mark all 135 armor pieces as owned? Star levels are kept as-is.")) {
+    ARMOR.forEach(a => setOwned(a, true));
+    saveJSON(ARMOR_KEY, armorState);
+    renderArmor();
+    renderMaterials();
+  }
+});
+
+document.getElementById("markNoneOwned").addEventListener("click", () => {
+  if (confirm("Mark all 135 armor pieces as not owned? Star levels are kept as-is.")) {
+    ARMOR.forEach(a => setOwned(a, false));
+    saveJSON(ARMOR_KEY, armorState);
+    renderArmor();
+    renderMaterials();
+  }
+});
+
+// ---- Tabs ----
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.remove("active");
+      b.setAttribute("aria-selected", "false");
+    });
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ---- Export / Import ----
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const backup = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    needs, haves, armorState, filterOwned
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "totk_tracker_backup.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("fileInput").click();
+});
+
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm("Import this backup? This will overwrite your current data.")) return;
+      needs = data.needs || {};
+      haves = data.haves || {};
+      armorState = data.armorState || {};
+      filterOwned = !!data.filterOwned;
+      saveJSON(NEEDS_KEY, needs);
+      saveJSON(HAVES_KEY, haves);
+      saveJSON(ARMOR_KEY, armorState);
+      saveJSON(FILTER_KEY, filterOwned);
+      document.getElementById("filterOwned").checked = filterOwned;
+      renderMaterials();
+      renderArmor();
+      alert("Import successful.");
+    } catch (err) {
+      alert("Could not read backup file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+// ---- Init ----
+renderMaterials();
+renderArmor();
+</script>
+</body>
+</html>
