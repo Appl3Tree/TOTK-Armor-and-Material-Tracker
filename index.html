@@ -187,7 +187,9 @@
     font-weight: 600;
   }
   .id-col { color: var(--text-dim); width: 32px; }
-  .type-col { color: var(--text-dim); width: 110px; }
+  .type-col, .subtype-col { color: var(--text-dim); }
+  .type-col { width: 110px; }
+  .subtype-col { width: 130px; }
 
   /* Armor tab */
   .armor-set-group {
@@ -339,7 +341,7 @@
   </div>
 
   <div class="controls">
-    <input type="text" id="searchBox" placeholder="Search item or type...">
+    <input type="text" id="searchBox" placeholder="Search item, type, or subtype...">
   </div>
 
   <div class="controls">
@@ -357,6 +359,7 @@
       <tr>
         <th class="id-col" data-sort="id" tabindex="0">#</th>
         <th class="type-col" data-sort="type" tabindex="0">Type</th>
+        <th class="subtype-col" data-sort="subtype" tabindex="0">Subtype</th>
         <th data-sort="name" tabindex="0">Item</th>
         <th class="num" data-sort="have" tabindex="0">Have</th>
         <th class="num" data-sort="need" tabindex="0">Need</th>
@@ -494,6 +497,7 @@ function renderMaterials() {
     // The # column preserves the tracker's stable internal ID for existing backups/local storage.
     const tieBreakers = {
       type: ["gameOrder", "name", "id"],
+      subtype: ["subtype", "gameOrder", "name", "id"],
       name: ["name", "gameOrder", "id"],
       id: ["id"],
       have: ["have", "gameOrder", "name"],
@@ -515,7 +519,7 @@ function renderMaterials() {
     if (r.need > 0) withNeed++;
     if (r.safe < 0) short++;
 
-    const searchableText = `${r.name} ${r.type}`.toLowerCase();
+    const searchableText = `${r.name} ${r.type} ${r.subtype}`.toLowerCase();
     const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
     const matchesFilter = !filterOwned || r.need > 0;
     const visible = matchesSearch && matchesFilter;
@@ -529,6 +533,7 @@ function renderMaterials() {
     tr.innerHTML = `
       <td class="id-col">${r.id}</td>
       <td class="type-col">${r.type}</td>
+      <td class="subtype-col">${r.subtype}</td>
       <td>${r.name}</td>
       <td class="num">
         <label class="sr-only" for="have-${r.id}">${r.name} have</label>
