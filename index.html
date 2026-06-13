@@ -317,7 +317,7 @@
 <h1>Tears of the Kingdom — Armor &amp; Material Tracker</h1>
 <div class="subtitle">
   Track armor upgrade levels and the materials needed to finish them. Data is saved automatically in this browser.
-</div
+</div>
 
 <div class="controls">
   <button id="exportBtn">Export backup (JSON)</button>
@@ -339,7 +339,7 @@
   </div>
 
   <div class="controls">
-    <input type="text" id="searchBox" placeholder="Search item or type...">
+    <input type="text" id="searchBox" placeholder="Search item, type, or subtype...">
   </div>
 
   <div class="controls">
@@ -357,6 +357,7 @@
       <tr>
         <th class="id-col" data-sort="id" tabindex="0">#</th>
         <th class="type-col" data-sort="type" tabindex="0">Type</th>
+        <th class="type-col" data-sort="subtype" tabindex="0">Subtype</th>
         <th data-sort="name" tabindex="0">Item</th>
         <th class="num" data-sort="have" tabindex="0">Have</th>
         <th class="num" data-sort="need" tabindex="0">Need</th>
@@ -496,7 +497,8 @@ function renderMaterials() {
     // Type sorting follows the user-validated in-game Materials sort order.
     // The # column preserves the tracker's stable internal ID for existing backups/local storage.
     const tieBreakers = {
-      type: ["gameOrder", "name", "id"],
+      type: ["gameOrder", "type", "subtype", "name", "id"],
+      subtype: ["type", "subtype", "gameOrder", "name", "id"],
       name: ["name", "gameOrder", "id"],
       id: ["id"],
       have: ["have", "gameOrder", "name"],
@@ -518,7 +520,7 @@ function renderMaterials() {
     if (r.need > 0) withNeed++;
     if (r.safe < 0) short++;
 
-    const searchableText = `${r.name} ${r.type}`.toLowerCase();
+    const searchableText = `${r.name} ${r.type} ${r.subtype}`.toLowerCase();
     const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
     const matchesFilter = !filterOwned || r.need > 0;
     const visible = matchesSearch && matchesFilter;
@@ -532,6 +534,7 @@ function renderMaterials() {
     tr.innerHTML = `
       <td class="id-col">${r.id}</td>
       <td class="type-col">${r.type}</td>
+      <td class="type-col">${r.subtype}</td>
       <td>${r.name}</td>
       <td class="num">
         <label class="sr-only" for="have-${r.id}">${r.name} have</label>
